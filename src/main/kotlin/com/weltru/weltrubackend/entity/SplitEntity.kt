@@ -28,9 +28,11 @@ class SplitEntity(
     @Column(name = "description")
     var description: String? = null,
 
-    @Column(name = "created_at", nullable = false)
-    var createdAt: OffsetDateTime? = null,
 
-    @Column(name = "updated_at", nullable = false)
-    var updatedAt: OffsetDateTime? = null
+
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
+var createdAt: OffsetDateTime? = null,
+
+@Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
+var updatedAt: OffsetDateTime? = null
 )

@@ -1,6 +1,6 @@
 package com.weltru.weltrubackend.repository
 
-import com.weltru.weltrubackend.controller.WorkoutSessionEntity
+import com.weltru.weltrubackend.entity.WorkoutSessionEntity
 import org.springframework.data.jpa.repository.JpaRepository
 import java.util.UUID
 

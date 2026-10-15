@@ -88,7 +88,8 @@ class SplitExerciseService(
     @Transactional(readOnly = true)
     fun getExercisesBySplitId(
         splitId: UUID
-    ): List<SplitExerciseEntity> {
+    )
+    : List<SplitExerciseEntity> {
 
         require(splitRepository.existsById(splitId)) {
             "Split not found: $splitId"
@@ -96,5 +97,27 @@ class SplitExerciseService(
 
         return splitExerciseRepository
             .findAllBySplitIdOrderByExerciseOrder(splitId)
+    }
+    @Transactional
+    fun deleteExercise(
+        splitId: UUID,
+        splitExerciseId: UUID
+    ) {
+        require(splitRepository.existsById(splitId)) {
+            "Split not found: $splitId"
+        }
+
+        val exercise = splitExerciseRepository.findById(splitExerciseId)
+            .orElseThrow {
+                IllegalArgumentException(
+                    "Exercise not found: $splitExerciseId"
+                )
+            }
+
+        require(exercise.splitId == splitId) {
+            "Exercise does not belong to this split"
+        }
+
+        splitExerciseRepository.delete(exercise)
     }
 }

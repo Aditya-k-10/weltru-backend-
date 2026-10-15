@@ -74,6 +74,17 @@ class SplitExerciseController(
     ): List<SplitExerciseEntity> {
         return splitExerciseService.getExercisesBySplitId(splitId)
     }
+    @DeleteMapping("/{splitExerciseId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteExercise(
+        @PathVariable splitId: UUID,
+        @PathVariable splitExerciseId: UUID
+    ) {
+        splitExerciseService.deleteExercise(
+            splitId,
+            splitExerciseId
+        )
+    }
     }
 
 

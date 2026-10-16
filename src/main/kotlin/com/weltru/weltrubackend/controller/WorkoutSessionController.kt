@@ -1,9 +1,11 @@
 package com.weltru.weltrubackend.controller
+
 import com.weltru.weltrubackend.dto.StartWorkoutRequest
 import com.weltru.weltrubackend.entity.WorkoutSessionEntity
 import com.weltru.weltrubackend.service.WorkoutSessionService
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api/workout-sessions")
@@ -17,6 +19,7 @@ class WorkoutSessionController(
         @RequestBody request: StartWorkoutRequest
     ): WorkoutSessionEntity {
         return workoutSessionService.startWorkout(
+            id = request.id,
             userId = request.userId,
             splitId = request.splitId,
             splitNameSnapshot = request.splitName,
@@ -26,14 +29,14 @@ class WorkoutSessionController(
 
     @PatchMapping("/{sessionId}/complete")
     fun completeWorkout(
-        @PathVariable sessionId: java.util.UUID
+        @PathVariable sessionId: UUID
     ): WorkoutSessionEntity {
         return workoutSessionService.completeWorkout(sessionId)
     }
 
     @GetMapping("/{sessionId}")
     fun getWorkoutSession(
-        @PathVariable sessionId: java.util.UUID
+        @PathVariable sessionId: UUID
     ): WorkoutSessionEntity {
         return workoutSessionService.getWorkoutSession(sessionId)
     }

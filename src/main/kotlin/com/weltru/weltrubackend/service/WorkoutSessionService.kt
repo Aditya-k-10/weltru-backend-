@@ -14,13 +14,21 @@ class WorkoutSessionService(
 
     @Transactional
     fun startWorkout(
+        id: UUID? = null,
         userId: UUID,
         splitId: UUID? = null,
         splitNameSnapshot: String? = null,
         notes: String? = null
     ): WorkoutSessionEntity {
+        if (id != null) {
+            val existing = workoutSessionRepository.findById(id)
+            if (existing.isPresent) {
+                return existing.get()
+            }
+        }
 
         val session = WorkoutSessionEntity(
+            id = id,
             userId = userId,
             splitId = splitId,
             splitNameSnapshot = splitNameSnapshot,
@@ -59,6 +67,4 @@ class WorkoutSessionService(
                 )
             }
     }
-
-
 }

@@ -12,6 +12,10 @@ interface SplitExerciseRepository : JpaRepository<SplitExerciseEntity, UUID> {
         splitId: UUID
     ): List<SplitExerciseEntity>
 
+    fun findAllBySplitIdIn(
+        splitIds: Collection<UUID>
+    ): List<SplitExerciseEntity>
+
     fun existsBySplitIdAndExerciseOrder(
         splitId: UUID,
         exerciseOrder: Int

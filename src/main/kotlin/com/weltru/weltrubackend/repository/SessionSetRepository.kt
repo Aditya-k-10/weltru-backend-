@@ -15,6 +15,7 @@ interface SessionSetRepository : JpaRepository<SessionSetEntity, UUID> {
         id: UUID,
         sessionId: UUID
     ): Optional<SessionSetEntity>
-
+    
+    fun deleteAllBySessionId(sessionId: UUID)
 }
 

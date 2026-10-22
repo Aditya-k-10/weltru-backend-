@@ -71,13 +71,10 @@ class SplitExerciseService(
             }
         }
 
-        require(
-            !splitExerciseRepository.existsBySplitIdAndExerciseOrder(
-                splitId,
-                exercise.exerciseOrder
-            )
-        ) {
-            "This exercise order is already used in the split"
+        if (splitExerciseRepository.existsBySplitIdAndExerciseOrder(splitId, exercise.exerciseOrder)) {
+            val maxOrder = splitExerciseRepository.findAllBySplitIdOrderByExerciseOrder(splitId)
+                .maxOfOrNull { it.exerciseOrder } ?: 0
+            exercise.exerciseOrder = maxOrder + 1
         }
 
         exercise.splitId = splitId

@@ -1,12 +1,7 @@
 package com.weltru.weltrubackend.entity
 
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.PrePersist
-import jakarta.persistence.Table
+import jakarta.persistence.*
+import org.springframework.data.domain.Persistable
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -14,9 +9,8 @@ import java.util.UUID
 @Table(name = "workout_sessions")
 class WorkoutSessionEntity(
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", nullable = false)
-    var id: UUID? = null,
+    private var id: UUID? = null,
 
     @Column(name = "user_id", nullable = false)
     var userId: UUID,
@@ -38,11 +32,28 @@ class WorkoutSessionEntity(
 
     @Column(name = "notes")
     var notes: String? = null
-) {
+) : Persistable<UUID> {
+
+    @Transient
+    private var isNewEntity: Boolean = true
+
+    override fun getId(): UUID? = id
+
+    override fun isNew(): Boolean = isNewEntity
+
     @PrePersist
     fun onCreate() {
+        if (id == null) {
+            id = UUID.randomUUID()
+        }
         if (startedAt == null) {
             startedAt = OffsetDateTime.now()
         }
+    }
+
+    @PostPersist
+    @PostLoad
+    fun markNotNew() {
+        this.isNewEntity = false
     }
 }

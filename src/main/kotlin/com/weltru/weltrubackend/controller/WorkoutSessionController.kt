@@ -1,6 +1,7 @@
 package com.weltru.weltrubackend.controller
 
 import com.weltru.weltrubackend.dto.StartWorkoutRequest
+import com.weltru.weltrubackend.dto.WorkoutSyncDto
 import com.weltru.weltrubackend.entity.WorkoutSessionEntity
 import com.weltru.weltrubackend.service.WorkoutSessionService
 import org.springframework.http.HttpStatus
@@ -39,5 +40,20 @@ class WorkoutSessionController(
         @PathVariable sessionId: UUID
     ): WorkoutSessionEntity {
         return workoutSessionService.getWorkoutSession(sessionId)
+    }
+
+    @GetMapping("/{sessionId}/state")
+    fun getWorkoutState(
+        @PathVariable sessionId: UUID
+    ): WorkoutSyncDto {
+        return workoutSessionService.getFullWorkoutState(sessionId)
+    }
+
+    @PutMapping("/{sessionId}/sync")
+    fun syncWorkoutState(
+        @PathVariable sessionId: UUID,
+        @RequestBody request: WorkoutSyncDto
+    ): WorkoutSyncDto {
+        return workoutSessionService.syncWorkoutState(request)
     }
 }

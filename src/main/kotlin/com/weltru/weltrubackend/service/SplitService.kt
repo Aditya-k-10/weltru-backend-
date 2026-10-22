@@ -28,13 +28,17 @@ class SplitService(
 
 
 
-    fun getAllSplits(): List<SplitMetadataResponse> {
-        return splitRepository.findAll().map { split ->
-            val splitId = requireNotNull(split.id)
+    fun getAllSplits(userId: UUID): List<SplitMetadataResponse> {
+        val splits = splitRepository.findAllByUserId(userId)
+        if (splits.isEmpty()) return emptyList()
 
-            val exercises =
-                splitExerciseRepository
-                    .findAllBySplitIdOrderByExerciseOrder(splitId)
+        val splitIds = splits.mapNotNull { it.id }
+        val allExercises = splitExerciseRepository.findAllBySplitIdIn(splitIds)
+        val exercisesBySplitId = allExercises.groupBy { it.splitId }
+
+        return splits.map { split ->
+            val splitId = requireNotNull(split.id)
+            val exercises = exercisesBySplitId[splitId].orEmpty().sortedBy { it.exerciseOrder }
 
             SplitMetadataResponse(
                 splitId = splitId,
@@ -43,7 +47,8 @@ class SplitService(
                     description = split.description,
                     exerciseCount = exercises.size,
                     totalSets = exercises.sumOf { it.targetSets ?: 0 }
-                )
+                ),
+                exercises = exercises
             )
         }
     }

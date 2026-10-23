@@ -17,16 +17,20 @@ class SplitService(
 ) {
 
     fun createSplit(request: CreateSplitRequest): SplitEntity {
+        val trimmedName = request.name.trim()
+        val existingSplits = splitRepository.findAllByUserId(request.userId)
+        if (existingSplits.any { it.name.trim().equals(trimmedName, ignoreCase = true) }) {
+            throw IllegalArgumentException("A split named '$trimmedName' already exists")
+        }
+
         val split = SplitEntity(
             userId = request.userId,
-            name = request.name,
+            name = trimmedName,
             description = request.description
         )
 
         return splitRepository.save(split)
     }
-
-
 
     fun getAllSplits(userId: UUID): List<SplitMetadataResponse> {
         val splits = splitRepository.findAllByUserId(userId)
@@ -65,6 +69,4 @@ class SplitService(
         split.name = request.name
         return splitRepository.save(split)
     }
-
-
 }

@@ -13,12 +13,14 @@ import java.util.UUID
 class WorkoutSessionServiceTest {
 
     private lateinit var workoutSessionRepository: WorkoutSessionRepository
+    private lateinit var sessionSetRepository: com.weltru.weltrubackend.repository.SessionSetRepository
     private lateinit var workoutSessionService: WorkoutSessionService
 
     @BeforeEach
     fun setUp() {
         workoutSessionRepository = mock(WorkoutSessionRepository::class.java)
-        workoutSessionService = WorkoutSessionService(workoutSessionRepository)
+        sessionSetRepository = mock(com.weltru.weltrubackend.repository.SessionSetRepository::class.java)
+        workoutSessionService = WorkoutSessionService(workoutSessionRepository, sessionSetRepository)
     }
 
     @Test

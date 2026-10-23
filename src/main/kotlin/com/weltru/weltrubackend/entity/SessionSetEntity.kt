@@ -1,13 +1,13 @@
 package com.weltru.weltrubackend.entity
 
-
-
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-
 import jakarta.persistence.Id
+import jakarta.persistence.PostLoad
+import jakarta.persistence.PostPersist
 import jakarta.persistence.Table
-import org.hibernate.annotations.UuidGenerator
+import jakarta.persistence.Transient
+import org.springframework.data.domain.Persistable
 import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -17,9 +17,8 @@ import java.util.UUID
 class SessionSetEntity(
 
     @Id
-    @UuidGenerator
     @Column(name = "id", nullable = false)
-    var id: UUID? = null,
+    private var id: UUID? = null,
 
     @Column(name = "session_id", nullable = false)
     var sessionId: UUID,
@@ -27,8 +26,8 @@ class SessionSetEntity(
     @Column(name = "split_exercise_id")
     var splitExerciseId: UUID? = null,
 
-    @Column(name = "exercise_id", nullable = false)
-    var exerciseId: UUID,
+    @Column(name = "exercise_id", nullable = false, length = 100)
+    var exerciseId: String,
 
     @Column(name = "exercise_name_snapshot", nullable = false, length = 150)
     var exerciseNameSnapshot: String,
@@ -53,4 +52,22 @@ class SessionSetEntity(
 
     @Column(name = "completed_at")
     var completedAt: OffsetDateTime? = null
-)
+) : Persistable<UUID> {
+
+    @Transient
+    private var isNewEntity: Boolean = true
+
+    override fun getId(): UUID? = id
+
+    fun setId(id: UUID?) {
+        this.id = id
+    }
+
+    override fun isNew(): Boolean = isNewEntity
+
+    @PostPersist
+    @PostLoad
+    fun markNotNew() {
+        this.isNewEntity = false
+    }
+}

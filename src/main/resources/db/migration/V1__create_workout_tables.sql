@@ -1,4 +1,3 @@
-
 -- V1__create_workout_tables.sql
 
 -- 1. Workout templates / splits
@@ -19,7 +18,7 @@ CREATE TABLE split_exercises (
                                  split_id UUID NOT NULL
                                      REFERENCES splits(id) ON DELETE CASCADE,
 
-                                 exercise_id UUID NOT NULL,
+                                 exercise_id VARCHAR(100) NOT NULL,
                                  exercise_name VARCHAR(150) NOT NULL,
 
                                  exercise_type VARCHAR(20) NOT NULL DEFAULT 'STRENGTH',
@@ -87,6 +86,8 @@ CREATE TABLE workout_sessions (
                                   status VARCHAR(20) NOT NULL DEFAULT 'IN_PROGRESS',
                                   notes TEXT,
 
+                                  exercise_states JSONB NOT NULL DEFAULT '{}'::jsonb,
+
                                   CONSTRAINT chk_workout_status
                                       CHECK (
                                           status IN (
@@ -114,7 +115,7 @@ CREATE TABLE session_sets (
                               split_exercise_id UUID
                                               REFERENCES split_exercises(id) ON DELETE SET NULL,
 
-                              exercise_id UUID NOT NULL,
+                              exercise_id VARCHAR(100) NOT NULL,
                               exercise_name_snapshot VARCHAR(150) NOT NULL,
 
     -- Strength set number; cardio records use 1

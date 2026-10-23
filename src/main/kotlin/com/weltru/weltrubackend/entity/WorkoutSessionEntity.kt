@@ -1,7 +1,8 @@
 package com.weltru.weltrubackend.entity
 
 import jakarta.persistence.*
-import org.springframework.data.domain.Persistable
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -10,7 +11,7 @@ import java.util.UUID
 class WorkoutSessionEntity(
     @Id
     @Column(name = "id", nullable = false)
-    private var id: UUID? = null,
+    var id: UUID? = null,
 
     @Column(name = "user_id", nullable = false)
     var userId: UUID,
@@ -31,16 +32,12 @@ class WorkoutSessionEntity(
     var status: String = "IN_PROGRESS",
 
     @Column(name = "notes")
-    var notes: String? = null
-) : Persistable<UUID> {
+    var notes: String? = null,
 
-    @Transient
-    private var isNewEntity: Boolean = true
-
-    override fun getId(): UUID? = id
-
-    override fun isNew(): Boolean = isNewEntity
-
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "exercise_states", nullable = false)
+    var exerciseStates: Map<String, String> = emptyMap()
+) {
     @PrePersist
     fun onCreate() {
         if (id == null) {
@@ -49,11 +46,5 @@ class WorkoutSessionEntity(
         if (startedAt == null) {
             startedAt = OffsetDateTime.now()
         }
-    }
-
-    @PostPersist
-    @PostLoad
-    fun markNotNew() {
-        this.isNewEntity = false
     }
 }

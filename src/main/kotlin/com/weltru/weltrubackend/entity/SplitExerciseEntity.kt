@@ -1,9 +1,5 @@
 package com.weltru.weltrubackend.entity
 
-
-
-
-
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -26,8 +22,8 @@ class SplitExerciseEntity(
     @Column(name = "split_id", nullable = false)
     var splitId: UUID,
 
-    @Column(name = "exercise_id", nullable = false)
-    var exerciseId: UUID,
+    @Column(name = "exercise_id", nullable = false, length = 100)
+    var exerciseId: String,
 
     @Column(name = "exercise_name", nullable = false, length = 150)
     var exerciseName: String,

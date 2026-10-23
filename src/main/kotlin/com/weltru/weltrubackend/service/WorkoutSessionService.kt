@@ -7,8 +7,10 @@ import com.weltru.weltrubackend.entity.SessionSetEntity
 import com.weltru.weltrubackend.entity.WorkoutSessionEntity
 import com.weltru.weltrubackend.repository.SessionSetRepository
 import com.weltru.weltrubackend.repository.WorkoutSessionRepository
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -17,6 +19,10 @@ class WorkoutSessionService(
     private val workoutSessionRepository: WorkoutSessionRepository,
     private val sessionSetRepository: SessionSetRepository
 ) {
+    private val logger = LoggerFactory.getLogger(WorkoutSessionService::class.java)
+
+    // exerciseStates map value format: "STATUS|NAME|TYPE"
+    private val stateSeparator = "|"
 
     @Transactional
     fun startWorkout(
@@ -29,6 +35,7 @@ class WorkoutSessionService(
         if (id != null) {
             val existing = workoutSessionRepository.findById(id)
             if (existing.isPresent) {
+                logger.info("startWorkout: returning existing session ID=$id")
                 return existing.get()
             }
         }
@@ -41,18 +48,14 @@ class WorkoutSessionService(
             status = "IN_PROGRESS",
             notes = notes
         )
-
+        logger.info("startWorkout: created session ID=${session.id}")
         return workoutSessionRepository.save(session)
     }
 
     @Transactional
     fun completeWorkout(sessionId: UUID): WorkoutSessionEntity {
         val session = workoutSessionRepository.findById(sessionId)
-            .orElseThrow {
-                IllegalArgumentException(
-                    "Workout session not found: $sessionId"
-                )
-            }
+            .orElseThrow { IllegalArgumentException("Workout session not found: $sessionId") }
 
         require(session.status == "IN_PROGRESS") {
             "Only an in-progress workout can be completed"
@@ -60,72 +63,92 @@ class WorkoutSessionService(
 
         session.status = "COMPLETED"
         session.finishedAt = OffsetDateTime.now()
-
+        logger.info("completeWorkout: session $sessionId completed at ${session.finishedAt}")
         return workoutSessionRepository.save(session)
     }
 
     @Transactional(readOnly = true)
     fun getWorkoutSession(sessionId: UUID): WorkoutSessionEntity {
         return workoutSessionRepository.findById(sessionId)
-            .orElseThrow {
-                IllegalArgumentException(
-                    "Workout session not found: $sessionId"
-                )
-            }
+            .orElseThrow { IllegalArgumentException("Workout session not found: $sessionId") }
     }
 
     @Transactional
     fun syncWorkoutState(request: WorkoutSyncDto): WorkoutSyncDto {
+        logger.info("SYNC start: session=${request.sessionId}, status=${request.status}, exercises=${request.exercises.size}")
+
+        // 1. session load, status/notes/splitNameSnapshot set.
         val session = workoutSessionRepository.findById(request.sessionId)
             .orElseThrow { IllegalArgumentException("Workout session not found: ${request.sessionId}") }
 
         session.status = request.status
         session.notes = request.notes
         session.splitNameSnapshot = request.splitNameSnapshot
-        if (request.status == "COMPLETED" || request.status == "FINISHED") {
-            session.finishedAt = OffsetDateTime.now()
+
+        // 2. finishedAt: COMPLETED/FINISHED par now() (agar null), warna null.
+        val isFinal = request.status == "COMPLETED" || request.status == "FINISHED"
+        if (isFinal) {
+            if (session.finishedAt == null) session.finishedAt = OffsetDateTime.now()
+        } else {
+            session.finishedAt = null
         }
+
+        // 3. exerciseStates = request.exercises.associate { exerciseId to "status|name|type" }
+        session.exerciseStates = request.exercises.associate { exercise ->
+            val status = exercise.exerciseStatus?.takeIf { it.isNotBlank() } ?: "IN_PROGRESS"
+            val name = exercise.exerciseNameSnapshot?.takeIf { it.isNotBlank() } ?: exercise.exerciseId
+            val type = exercise.exerciseType ?: "STRENGTH"
+            exercise.exerciseId to listOf(status, name, type).joinToString(stateSeparator)
+        }
+
+        // 4. workoutSessionRepository.save(session)
         workoutSessionRepository.save(session)
 
-        // Clear existing sets to allow bulk overwrite
+        // 5. sessionSetRepository.deleteAllBySessionId(id); sessionSetRepository.flush()
         sessionSetRepository.deleteAllBySessionId(request.sessionId)
+        sessionSetRepository.flush()
 
-        // Bulk insert new sets (Filtering out useless sets and incomplete cardio)
+        // 6. Sets insert: id = UUID.randomUUID() (client setId ignore). Empty sets aur incomplete cardio skip.
         val newSets = mutableListOf<SessionSetEntity>()
         for (exercise in request.exercises) {
+            val isCardio = exercise.exerciseType == "CARDIO"
+            val exerciseName = exercise.exerciseNameSnapshot?.takeIf { it.isNotBlank() } ?: exercise.exerciseId
+
             for (set in exercise.sets) {
-                
-                // 1. Check if the set is completely empty (Ghost set)
-                val isCompletelyEmpty = !set.isCompleted && 
-                                        set.weightKg == null && 
-                                        set.actualReps == null && 
-                                        set.durationMinutes == null
+                val hasWeight = set.weightKg != null && set.weightKg.compareTo(BigDecimal.ZERO) != 0
+                val hasReps = (set.actualReps ?: 0) > 0
+                val hasDuration = (set.durationMinutes ?: 0) > 0
+                val isEmpty = !set.isCompleted && !hasWeight && !hasReps && !hasDuration
 
-                // 2. Strict Cardio Rule: If it's a Cardio exercise and it is NOT completed, throw it away.
-                // We don't save paused/incomplete timers.
-                val isIncompleteCardio = exercise.exerciseType == "CARDIO" && !set.isCompleted
+                // Incomplete cardio (paused/unfinished timer) is not persisted as a set
+                val isIncompleteCardio = isCardio && !set.isCompleted
 
-                if (!isCompletelyEmpty && !isIncompleteCardio) {
-                    newSets.add(
-                        SessionSetEntity(
-                            id = set.setId ?: UUID.randomUUID(),
-                            sessionId = request.sessionId,
-                            splitExerciseId = exercise.splitExerciseId,
-                            exerciseId = exercise.exerciseId,
-                            exerciseNameSnapshot = exercise.exerciseNameSnapshot,
-                            setNumber = set.setNumber,
-                            weightKg = set.weightKg,
-                            actualReps = set.actualReps,
-                            durationMinutes = set.durationMinutes,
-                            isCompleted = set.isCompleted,
-                            // Automatically set timestamp if completed
-                            completedAt = if (set.isCompleted) OffsetDateTime.now() else null
-                        )
-                    )
+                if (isEmpty || isIncompleteCardio) {
+                    logger.info("SKIP set #${set.setNumber} for ${exercise.exerciseId}: empty=$isEmpty, incompleteCardio=$isIncompleteCardio")
+                    continue
                 }
+
+                newSets.add(
+                    SessionSetEntity(
+                        id = UUID.randomUUID(),
+                        sessionId = request.sessionId,
+                        splitExerciseId = exercise.splitExerciseId,
+                        exerciseId = exercise.exerciseId,
+                        exerciseNameSnapshot = exerciseName,
+                        setNumber = set.setNumber,
+                        weightKg = set.weightKg,
+                        actualReps = set.actualReps,
+                        durationMinutes = set.durationMinutes,
+                        isCompleted = set.isCompleted,
+                        completedAt = if (set.isCompleted) OffsetDateTime.now() else null
+                    )
+                )
             }
         }
+
+        // 7. saveAll(newSets); return getFullWorkoutState(id).
         sessionSetRepository.saveAll(newSets)
+        logger.info("SYNC done: saved ${newSets.size} sets for session ${request.sessionId}")
 
         return getFullWorkoutState(request.sessionId)
     }
@@ -135,31 +158,43 @@ class WorkoutSessionService(
         val session = workoutSessionRepository.findById(sessionId)
             .orElseThrow { IllegalArgumentException("Workout session not found: $sessionId") }
 
+        // sets = findAllBySessionIdOrderBySetNumberAsc
         val sets = sessionSetRepository.findAllBySessionIdOrderBySetNumberAsc(sessionId)
+        // setsByExerciseId = sets.groupBy { it.exerciseId } (String)
+        val setsByExerciseId = sets.groupBy { it.exerciseId }
 
-        data class ExerciseKey(val exerciseId: UUID, val splitExerciseId: UUID?, val exerciseNameSnapshot: String)
-        
-        val setsByExercise = sets.groupBy { 
-            ExerciseKey(it.exerciseId, it.splitExerciseId, it.exerciseNameSnapshot) 
-        }
+        // allIds = (session.exerciseStates.keys + setsByExerciseId.keys).distinct()
+        val allExerciseIds = (session.exerciseStates.keys + setsByExerciseId.keys).distinct()
 
-        val syncExercises = setsByExercise.map { (key, exerciseSets) ->
-            // Infer type: If any set has a duration, it's CARDIO. Otherwise STRENGTH.
-            val type = if (exerciseSets.any { it.durationMinutes != null }) "CARDIO" else "STRENGTH"
-            
+        val syncExercises = allExerciseIds.map { exId ->
+            val exerciseSets = setsByExerciseId[exId].orEmpty()
+            val firstSet = exerciseSets.firstOrNull()
+
+            // status/name/type parse: split("|", limit=3)
+            val parts = (session.exerciseStates[exId] ?: "IN_PROGRESS").split(stateSeparator, limit = 3)
+            val exerciseStatus = parts.getOrNull(0)?.takeIf { it.isNotBlank() } ?: "IN_PROGRESS"
+            val nameFromState = parts.getOrNull(1)?.takeIf { it.isNotBlank() }
+            val typeFromState = parts.getOrNull(2)?.takeIf { it.isNotBlank() }
+
+            val exerciseNameSnapshot = firstSet?.exerciseNameSnapshot ?: nameFromState ?: exId
+            val exerciseType = typeFromState
+                ?: if (exerciseSets.any { it.durationMinutes != null }) "CARDIO" else "STRENGTH"
+
             SyncExerciseDto(
-                exerciseId = key.exerciseId,
-                splitExerciseId = key.splitExerciseId,
-                exerciseNameSnapshot = key.exerciseNameSnapshot,
-                exerciseType = type,
-                sets = exerciseSets.map {
+                exerciseId = exId,
+                splitExerciseId = firstSet?.splitExerciseId,
+                exerciseNameSnapshot = exerciseNameSnapshot,
+                exerciseType = exerciseType,
+                exerciseStatus = exerciseStatus,
+                sets = exerciseSets.map { s ->
                     SyncSetDto(
-                        setId = it.id,
-                        setNumber = it.setNumber,
-                        weightKg = it.weightKg,
-                        actualReps = it.actualReps,
-                        durationMinutes = it.durationMinutes,
-                        isCompleted = it.isCompleted
+                        setId = s.id,
+                        setNumber = s.setNumber,
+                        targetReps = s.targetReps,
+                        actualReps = s.actualReps,
+                        weightKg = s.weightKg,
+                        durationMinutes = s.durationMinutes,
+                        isCompleted = s.isCompleted
                     )
                 }
             )
@@ -167,9 +202,11 @@ class WorkoutSessionService(
 
         return WorkoutSyncDto(
             sessionId = session.id!!,
-            splitId = session.splitId,
+            splitId = session.splitId?.toString(),
             splitNameSnapshot = session.splitNameSnapshot,
             status = session.status,
+            startedAt = session.startedAt,
+            finishedAt = session.finishedAt,
             notes = session.notes,
             exercises = syncExercises
         )

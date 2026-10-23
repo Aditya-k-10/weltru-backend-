@@ -1,4 +1,3 @@
-
 package com.weltru.weltrubackend.controller
 
 import com.weltru.weltrubackend.entity.SplitExerciseEntity
@@ -74,6 +73,7 @@ class SplitExerciseController(
     ): List<SplitExerciseEntity> {
         return splitExerciseService.getExercisesBySplitId(splitId)
     }
+
     @DeleteMapping("/{splitExerciseId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun deleteExercise(
@@ -85,11 +85,10 @@ class SplitExerciseController(
             splitExerciseId
         )
     }
-    }
-
+}
 
 data class SplitExerciseRequest(
-    val exerciseId: UUID,
+    val exerciseId: String,
     val exerciseName: String,
     val exerciseType: String,
     val exerciseOrder: Int,

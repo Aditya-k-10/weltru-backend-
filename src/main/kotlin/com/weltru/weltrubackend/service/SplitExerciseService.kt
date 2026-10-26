@@ -2,6 +2,7 @@
 package com.weltru.weltrubackend.service
 
 import com.weltru.weltrubackend.entity.SplitExerciseEntity
+import com.weltru.weltrubackend.repository.SessionSetRepository
 import com.weltru.weltrubackend.repository.SplitExerciseRepository
 import com.weltru.weltrubackend.repository.SplitRepository
 import org.springframework.stereotype.Service
@@ -11,7 +12,8 @@ import java.util.UUID
 @Service
 class SplitExerciseService(
     private val splitExerciseRepository: SplitExerciseRepository,
-    private val splitRepository: SplitRepository
+    private val splitRepository: SplitRepository,
+    private val sessionSetRepository: SessionSetRepository
 ) {
 
     @Transactional
@@ -100,6 +102,30 @@ class SplitExerciseService(
         splitId: UUID,
         splitExerciseId: UUID
     ) {
+        if (!splitRepository.existsById(splitId)) {
+            return
+        }
+
+        val exerciseOpt = splitExerciseRepository.findById(splitExerciseId)
+        if (exerciseOpt.isEmpty) {
+            return
+        }
+
+        val exercise = exerciseOpt.get()
+        if (exercise.splitId != splitId) {
+            return
+        }
+
+        sessionSetRepository.nullifySplitExerciseId(splitExerciseId)
+        splitExerciseRepository.delete(exercise)
+    }
+
+    @Transactional
+    fun updateExercise(
+        splitId: UUID,
+        splitExerciseId: UUID,
+        request: com.weltru.weltrubackend.controller.SplitExerciseRequest
+    ): SplitExerciseEntity {
         require(splitRepository.existsById(splitId)) {
             "Split not found: $splitId"
         }
@@ -115,6 +141,16 @@ class SplitExerciseService(
             "Exercise does not belong to this split"
         }
 
-        splitExerciseRepository.delete(exercise)
+        if (request.exerciseName.isNotBlank()) {
+            exercise.exerciseName = request.exerciseName
+        }
+        if (request.targetSets != null && request.targetSets > 0) {
+            exercise.targetSets = request.targetSets
+        }
+        if (request.targetDurationMinutes != null && request.targetDurationMinutes > 0) {
+            exercise.targetDurationMinutes = request.targetDurationMinutes
+        }
+
+        return splitExerciseRepository.save(exercise)
     }
 }

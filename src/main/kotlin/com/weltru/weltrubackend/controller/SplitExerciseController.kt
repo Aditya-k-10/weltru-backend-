@@ -85,6 +85,19 @@ class SplitExerciseController(
             splitExerciseId
         )
     }
+
+    @PutMapping("/{splitExerciseId}")
+    fun updateExercise(
+        @PathVariable splitId: UUID,
+        @PathVariable splitExerciseId: UUID,
+        @RequestBody request: SplitExerciseRequest
+    ): SplitExerciseEntity {
+        return splitExerciseService.updateExercise(
+            splitId,
+            splitExerciseId,
+            request
+        )
+    }
 }
 
 data class SplitExerciseRequest(

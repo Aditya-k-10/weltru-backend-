@@ -1,7 +1,4 @@
-
 package com.weltru.weltrubackend.service
-
-
 
 import com.weltru.weltrubackend.dto.CreateSessionSetRequest
 import com.weltru.weltrubackend.dto.UpdateSessionSetRequest
@@ -37,6 +34,7 @@ class SessionSetService(
             }
 
         val sessionSet = SessionSetEntity(
+            id = UUID.randomUUID(),
             sessionId = session.id!!,
             splitExerciseId = request.splitExerciseId,
             exerciseId = request.exerciseId,
@@ -50,6 +48,7 @@ class SessionSetService(
 
         return sessionSetRepository.save(sessionSet)
     }
+
     @Transactional(readOnly = true)
     fun getSessionSet(
         sessionId: UUID,
@@ -63,6 +62,7 @@ class SessionSetService(
                 )
             }
     }
+
     @Transactional
     fun updateSessionSet(
         sessionId: UUID,
@@ -90,6 +90,7 @@ class SessionSetService(
 
         return sessionSetRepository.save(sessionSet)
     }
+
     @Transactional
     fun completeSessionSet(
         sessionId: UUID,
@@ -109,6 +110,7 @@ class SessionSetService(
 
         return sessionSetRepository.save(sessionSet)
     }
+
     @Transactional
     fun deleteSessionSet(
         sessionId: UUID,

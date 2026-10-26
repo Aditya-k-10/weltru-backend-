@@ -23,4 +23,9 @@ interface SessionSetRepository : JpaRepository<SessionSetEntity, UUID> {
     @Transactional
     @Query("DELETE FROM SessionSetEntity s WHERE s.sessionId = :sessionId")
     fun deleteAllBySessionId(sessionId: UUID)
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE SessionSetEntity s SET s.splitExerciseId = null WHERE s.splitExerciseId = :splitExerciseId")
+    fun nullifySplitExerciseId(splitExerciseId: UUID)
 }

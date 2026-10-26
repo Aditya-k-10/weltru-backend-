@@ -6,6 +6,7 @@ import com.weltru.weltrubackend.dto.WorkoutSyncDto
 import com.weltru.weltrubackend.entity.SessionSetEntity
 import com.weltru.weltrubackend.entity.WorkoutSessionEntity
 import com.weltru.weltrubackend.repository.SessionSetRepository
+import com.weltru.weltrubackend.repository.SplitExerciseRepository
 import com.weltru.weltrubackend.repository.WorkoutSessionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -17,7 +18,8 @@ import java.util.UUID
 @Service
 class WorkoutSessionService(
     private val workoutSessionRepository: WorkoutSessionRepository,
-    private val sessionSetRepository: SessionSetRepository
+    private val sessionSetRepository: SessionSetRepository,
+    private val splitExerciseRepository: SplitExerciseRepository
 ) {
     private val logger = LoggerFactory.getLogger(WorkoutSessionService::class.java)
 
@@ -155,22 +157,71 @@ class WorkoutSessionService(
 
     @Transactional(readOnly = true)
     fun getFullWorkoutState(sessionId: UUID): WorkoutSyncDto {
-        val session = workoutSessionRepository.findById(sessionId)
-            .orElseThrow { IllegalArgumentException("Workout session not found: $sessionId") }
+        val sessionOpt = workoutSessionRepository.findById(sessionId)
+        if (sessionOpt.isEmpty) {
+            return WorkoutSyncDto(
+                sessionId = sessionId,
+                splitId = null,
+                splitNameSnapshot = "Workout Session",
+                status = "IN_PROGRESS",
+                startedAt = OffsetDateTime.now(),
+                finishedAt = null,
+                exercises = emptyList()
+            )
+        }
+        val session = sessionOpt.get()
 
-        // sets = findAllBySessionIdOrderBySetNumberAsc
         val sets = sessionSetRepository.findAllBySessionIdOrderBySetNumberAsc(sessionId)
-        // setsByExerciseId = sets.groupBy { it.exerciseId } (String)
         val setsByExerciseId = sets.groupBy { it.exerciseId }
 
-        // allIds = (session.exerciseStates.keys + setsByExerciseId.keys).distinct()
-        val allExerciseIds = (session.exerciseStates.keys + setsByExerciseId.keys).distinct()
+        // If exerciseStates is empty and no sets exist yet for this session, load template exercises from split_exercises
+        val hasSessionData = session.exerciseStates.isNotEmpty() || sets.isNotEmpty()
+        if (!hasSessionData && session.splitId != null) {
+            val templateExercises = splitExerciseRepository.findAllBySplitIdOrderByExerciseOrder(session.splitId!!)
+            val syncExercises = templateExercises.map { templateEx ->
+                val targetSetsCount = templateEx.targetSets ?: 3
+                val isCardio = templateEx.exerciseType == "CARDIO"
+                val exId = templateEx.exerciseId
 
+                SyncExerciseDto(
+                    exerciseId = exId,
+                    splitExerciseId = templateEx.id,
+                    exerciseNameSnapshot = templateEx.exerciseName,
+                    exerciseType = templateEx.exerciseType,
+                    exerciseStatus = "IN_PROGRESS",
+                    targetSets = templateEx.targetSets,
+                    targetDurationMinutes = templateEx.targetDurationMinutes,
+                    sets = if (isCardio) emptyList() else (1..targetSetsCount).map { setNum ->
+                        SyncSetDto(
+                            setId = null,
+                            setNumber = setNum,
+                            targetReps = templateEx.targetRepsMin,
+                            actualReps = null,
+                            weightKg = null,
+                            durationMinutes = templateEx.targetDurationMinutes,
+                            isCompleted = false
+                        )
+                    }
+                )
+            }
+
+            return WorkoutSyncDto(
+                sessionId = session.id!!,
+                splitId = session.splitId?.toString(),
+                splitNameSnapshot = session.splitNameSnapshot,
+                status = session.status,
+                startedAt = session.startedAt,
+                finishedAt = session.finishedAt,
+                notes = session.notes,
+                exercises = syncExercises
+            )
+        }
+
+        val allExerciseIds = (session.exerciseStates.keys + setsByExerciseId.keys).distinct()
         val syncExercises = allExerciseIds.map { exId ->
             val exerciseSets = setsByExerciseId[exId].orEmpty()
             val firstSet = exerciseSets.firstOrNull()
 
-            // status/name/type parse: split("|", limit=3)
             val parts = (session.exerciseStates[exId] ?: "IN_PROGRESS").split(stateSeparator, limit = 3)
             val exerciseStatus = parts.getOrNull(0)?.takeIf { it.isNotBlank() } ?: "IN_PROGRESS"
             val nameFromState = parts.getOrNull(1)?.takeIf { it.isNotBlank() }
@@ -209,6 +260,4 @@ class WorkoutSessionService(
             finishedAt = session.finishedAt,
             notes = session.notes,
             exercises = syncExercises
-        )
-    }
-}
+        )}}

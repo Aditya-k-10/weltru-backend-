@@ -8,6 +8,7 @@ import com.weltru.weltrubackend.entity.SplitEntity
 import com.weltru.weltrubackend.repository.SplitExerciseRepository
 import com.weltru.weltrubackend.repository.SplitRepository
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 @Service
@@ -68,5 +69,19 @@ class SplitService(
 
         split.name = request.name
         return splitRepository.save(split)
+    }
+
+    @Transactional
+    fun deleteSplit(splitId: UUID) {
+        val splitExists = splitRepository.existsById(splitId)
+        if (!splitExists) {
+            throw IllegalArgumentException("Split not found: $splitId")
+        }
+        
+        // Cascade delete exercises associated with the split
+        splitExerciseRepository.deleteAllBySplitId(splitId)
+        
+        // Delete the split itself
+        splitRepository.deleteById(splitId)
     }
 }

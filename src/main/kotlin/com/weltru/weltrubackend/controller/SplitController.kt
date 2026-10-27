@@ -7,6 +7,7 @@ import com.weltru.weltrubackend.dto.UpdateSplitRequest
 import com.weltru.weltrubackend.entity.SplitEntity
 import com.weltru.weltrubackend.service.SplitService
 import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -44,5 +45,13 @@ class SplitController(
         @RequestBody request: UpdateSplitRequest
     ): SplitEntity {
         return splitService.updateSplit(splitId, request)
+    }
+
+    @DeleteMapping("/{splitId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteSplit(
+        @PathVariable splitId: UUID
+    ) {
+        splitService.deleteSplit(splitId)
     }
 }

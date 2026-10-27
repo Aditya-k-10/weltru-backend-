@@ -20,8 +20,11 @@ interface SplitExerciseRepository : JpaRepository<SplitExerciseEntity, UUID> {
         splitId: UUID,
         exerciseOrder: Int
     ): Boolean
+
     fun deleteByIdAndSplitId(
         id: UUID,
         splitId: UUID
     )
+
+    fun deleteAllBySplitId(splitId: UUID)
 }

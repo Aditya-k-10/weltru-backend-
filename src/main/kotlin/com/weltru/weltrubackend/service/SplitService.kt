@@ -51,7 +51,8 @@ class SplitService(
                 metadata = SplitMetadata(
                     description = split.description,
                     exerciseCount = exercises.size,
-                    totalSets = exercises.sumOf { it.targetSets ?: 0 }
+                    totalSets = exercises.sumOf { it.targetSets ?: 0 },
+                    createdAt = split.createdAt?.toString()
                 ),
                 exercises = exercises
             )

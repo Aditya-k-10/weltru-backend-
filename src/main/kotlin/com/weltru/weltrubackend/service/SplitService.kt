@@ -5,8 +5,10 @@ import com.weltru.weltrubackend.dto.SplitMetadata
 import com.weltru.weltrubackend.dto.SplitMetadataResponse
 import com.weltru.weltrubackend.dto.UpdateSplitRequest
 import com.weltru.weltrubackend.entity.SplitEntity
+import com.weltru.weltrubackend.repository.SessionSetRepository
 import com.weltru.weltrubackend.repository.SplitExerciseRepository
 import com.weltru.weltrubackend.repository.SplitRepository
+import com.weltru.weltrubackend.repository.WorkoutSessionRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -14,7 +16,9 @@ import java.util.UUID
 @Service
 class SplitService(
     private val splitRepository: SplitRepository,
-    private val splitExerciseRepository: SplitExerciseRepository
+    private val splitExerciseRepository: SplitExerciseRepository,
+    private val workoutSessionRepository: WorkoutSessionRepository,
+    private val sessionSetRepository: SessionSetRepository
 ) {
 
     fun createSplit(request: CreateSplitRequest): SplitEntity {
@@ -26,8 +30,7 @@ class SplitService(
 
         val split = SplitEntity(
             userId = request.userId,
-            name = trimmedName,
-            description = request.description
+            name = trimmedName
         )
 
         return splitRepository.save(split)
@@ -49,7 +52,6 @@ class SplitService(
                 splitId = splitId,
                 splitName = split.name,
                 metadata = SplitMetadata(
-                    description = split.description,
                     exerciseCount = exercises.size,
                     totalSets = exercises.sumOf { it.targetSets ?: 0 },
                     createdAt = split.createdAt?.toString()
@@ -78,10 +80,19 @@ class SplitService(
         if (!splitExists) {
             throw IllegalArgumentException("Split not found: $splitId")
         }
-        
+
+        // Delete all workout sessions and their sets associated with this split
+        val sessions = workoutSessionRepository.findAllBySplitId(splitId)
+        sessions.forEach { session ->
+            if (session.id != null) {
+                sessionSetRepository.deleteAllBySessionId(session.id!!)
+            }
+        }
+        workoutSessionRepository.deleteAll(sessions)
+
         // Cascade delete exercises associated with the split
         splitExerciseRepository.deleteAllBySplitId(splitId)
-        
+
         // Delete the split itself
         splitRepository.deleteById(splitId)
     }

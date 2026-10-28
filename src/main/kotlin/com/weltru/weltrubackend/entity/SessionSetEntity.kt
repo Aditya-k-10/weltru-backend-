@@ -44,6 +44,7 @@ class SessionSetEntity(
     @Column(name = "weight_kg", precision = 7, scale = 2)
     var weightKg: BigDecimal? = null,
 
+    /** Duration stored explicitly in MINUTES */
     @Column(name = "duration_minutes")
     var durationMinutes: Int? = null,
 

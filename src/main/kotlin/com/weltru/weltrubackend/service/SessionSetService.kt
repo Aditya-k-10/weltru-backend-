@@ -33,18 +33,34 @@ class SessionSetService(
                 IllegalArgumentException("Workout session not found: $sessionId")
             }
 
-        val sessionSet = SessionSetEntity(
-            id = UUID.randomUUID(),
+        val existing = sessionSetRepository.findBySessionIdAndExerciseIdAndSetNumber(
             sessionId = session.id!!,
-            splitExerciseId = request.splitExerciseId,
             exerciseId = request.exerciseId,
-            exerciseNameSnapshot = request.exerciseNameSnapshot,
-            setNumber = request.setNumber,
-            targetReps = request.targetReps,
-            actualReps = request.actualReps,
-            weightKg = request.weightKg,
-            durationMinutes = request.durationMinutes
+            setNumber = request.setNumber
         )
+
+        val sessionSet = if (existing.isPresent) {
+            val setEntity = existing.get()
+            setEntity.exerciseNameSnapshot = request.exerciseNameSnapshot
+            setEntity.targetReps = request.targetReps ?: setEntity.targetReps
+            setEntity.actualReps = request.actualReps ?: setEntity.actualReps
+            setEntity.weightKg = request.weightKg ?: setEntity.weightKg
+            setEntity.durationMinutes = request.durationMinutes ?: setEntity.durationMinutes
+            setEntity
+        } else {
+            SessionSetEntity(
+                id = UUID.randomUUID(),
+                sessionId = session.id!!,
+                splitExerciseId = request.splitExerciseId,
+                exerciseId = request.exerciseId,
+                exerciseNameSnapshot = request.exerciseNameSnapshot,
+                setNumber = request.setNumber,
+                targetReps = request.targetReps,
+                actualReps = request.actualReps,
+                weightKg = request.weightKg,
+                durationMinutes = request.durationMinutes
+            )
+        }
 
         return sessionSetRepository.save(sessionSet)
     }

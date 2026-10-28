@@ -1,4 +1,3 @@
-
 package com.weltru.weltrubackend.dto
 
 import com.weltru.weltrubackend.entity.SplitExerciseEntity
@@ -12,7 +11,6 @@ data class SplitMetadataResponse(
 )
 
 data class SplitMetadata(
-    val description: String?,
     val exerciseCount: Int,
     val totalSets: Int,
     val createdAt: String? = null

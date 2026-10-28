@@ -26,6 +26,14 @@ class WorkoutSessionService(
     // exerciseStates map value format: "STATUS|NAME|TYPE"
     private val stateSeparator = "|"
 
+    @Transactional(readOnly = true)
+    fun getAllSessionsForUser(userId: UUID): List<WorkoutSyncDto> {
+        val sessions = workoutSessionRepository.findAllByUserIdOrderByStartedAtDesc(userId)
+        return sessions.map { session ->
+            getFullWorkoutState(session.id!!)
+        }
+    }
+
     @Transactional
     fun startWorkout(
         id: UUID? = null,
@@ -122,13 +130,13 @@ class WorkoutSessionService(
                 val hasDuration = (set.durationMinutes ?: 0) > 0
                 val isEmpty = !set.isCompleted && !hasWeight && !hasReps && !hasDuration
 
-                // Incomplete cardio (paused/unfinished timer) is not persisted as a set
-                val isIncompleteCardio = isCardio && !set.isCompleted
-
-                if (isEmpty || isIncompleteCardio) {
-                    logger.info("SKIP set #${set.setNumber} for ${exercise.exerciseId}: empty=$isEmpty, incompleteCardio=$isIncompleteCardio")
+                if (isEmpty) {
+                    logger.info("SKIP set #${set.setNumber} for ${exercise.exerciseId}: empty=$isEmpty")
                     continue
                 }
+
+                val rawDuration = set.durationMinutes
+                logger.info("⏱️ [BACKEND DURATION SECONDS] Exercise '$exerciseName', Set #${set.setNumber} -> Stored raw seconds = $rawDuration")
 
                 newSets.add(
                     SessionSetEntity(
@@ -140,7 +148,7 @@ class WorkoutSessionService(
                         setNumber = set.setNumber,
                         weightKg = set.weightKg,
                         actualReps = set.actualReps,
-                        durationMinutes = set.durationMinutes,
+                        durationMinutes = rawDuration,
                         isCompleted = set.isCompleted,
                         completedAt = if (set.isCompleted) OffsetDateTime.now() else null
                     )

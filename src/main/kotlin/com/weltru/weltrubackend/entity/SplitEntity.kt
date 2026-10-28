@@ -1,7 +1,5 @@
 package com.weltru.weltrubackend.entity
 
-
-
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
@@ -25,14 +23,9 @@ class SplitEntity(
     @Column(name = "name", nullable = false, length = 100)
     var name: String,
 
-    @Column(name = "description")
-    var description: String? = null,
-
-
-
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-var createdAt: OffsetDateTime? = null,
+    var createdAt: OffsetDateTime? = null,
 
-@Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
-var updatedAt: OffsetDateTime? = null
+    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
+    var updatedAt: OffsetDateTime? = null
 )

@@ -14,13 +14,15 @@ class WorkoutSessionServiceTest {
 
     private lateinit var workoutSessionRepository: WorkoutSessionRepository
     private lateinit var sessionSetRepository: com.weltru.weltrubackend.repository.SessionSetRepository
+    private lateinit var splitExerciseRepository: com.weltru.weltrubackend.repository.SplitExerciseRepository
     private lateinit var workoutSessionService: WorkoutSessionService
 
     @BeforeEach
     fun setUp() {
         workoutSessionRepository = mock(WorkoutSessionRepository::class.java)
         sessionSetRepository = mock(com.weltru.weltrubackend.repository.SessionSetRepository::class.java)
-        workoutSessionService = WorkoutSessionService(workoutSessionRepository, sessionSetRepository)
+        splitExerciseRepository = mock(com.weltru.weltrubackend.repository.SplitExerciseRepository::class.java)
+        workoutSessionService = WorkoutSessionService(workoutSessionRepository, sessionSetRepository, splitExerciseRepository)
     }
 
     @Test

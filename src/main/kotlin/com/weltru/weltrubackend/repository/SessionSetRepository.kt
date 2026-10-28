@@ -19,6 +19,12 @@ interface SessionSetRepository : JpaRepository<SessionSetEntity, UUID> {
         sessionId: UUID
     ): Optional<SessionSetEntity>
 
+    fun findBySessionIdAndExerciseIdAndSetNumber(
+        sessionId: UUID,
+        exerciseId: String,
+        setNumber: Int
+    ): Optional<SessionSetEntity>
+
     @Modifying
     @Transactional
     @Query("DELETE FROM SessionSetEntity s WHERE s.sessionId = :sessionId")

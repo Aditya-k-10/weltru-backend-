@@ -16,6 +16,14 @@ class WorkoutSessionController(
 ) {
     private val logger = LoggerFactory.getLogger(WorkoutSessionController::class.java)
 
+    @GetMapping
+    fun getAllWorkoutSessions(
+        @RequestParam userId: UUID
+    ): List<WorkoutSyncDto> {
+        logger.info("📩 [CONTROLLER GET /api/workout-sessions] Get All Sessions Request for userId=$userId")
+        return workoutSessionService.getAllSessionsForUser(userId)
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun startWorkout(

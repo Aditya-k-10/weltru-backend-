@@ -3,6 +3,8 @@ package com.weltru.weltrubackend.entity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
+import jakarta.persistence.PrePersist
+import jakarta.persistence.PreUpdate
 import jakarta.persistence.Table
 import org.hibernate.annotations.UuidGenerator
 import java.time.OffsetDateTime
@@ -23,9 +25,26 @@ class SplitEntity(
     @Column(name = "name", nullable = false, length = 100)
     var name: String,
 
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: OffsetDateTime? = null,
 
-    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
+    @Column(name = "updated_at", nullable = false)
     var updatedAt: OffsetDateTime? = null
-)
+) {
+
+    @PrePersist
+    fun onCreate() {
+        val now = OffsetDateTime.now()
+        if (createdAt == null) {
+            createdAt = now
+        }
+        if (updatedAt == null) {
+            updatedAt = now
+        }
+    }
+
+    @PreUpdate
+    fun onUpdate() {
+        updatedAt = OffsetDateTime.now()
+    }
+}

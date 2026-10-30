@@ -94,6 +94,12 @@ class WorkoutSessionService(
         session.status = request.status
         session.notes = request.notes
         session.splitNameSnapshot = request.splitNameSnapshot
+        if (request.calories != null) {
+            session.calories = request.calories
+            logger.info("🔥 [BACKEND CALORIES SAVED] Session ID={} -> Saved calories: {} kcal into database", session.id, session.calories)
+        } else {
+            logger.info("ℹ️ [BACKEND CALORIES] No calories provided in sync request for Session ID={}", session.id)
+        }
 
         // 2. finishedAt: COMPLETED/FINISHED par now() (agar null), warna null.
         val isFinal = request.status == "COMPLETED" || request.status == "FINISHED"
@@ -103,12 +109,25 @@ class WorkoutSessionService(
             session.finishedAt = null
         }
 
-        // 3. exerciseStates = request.exercises.associate { exerciseId to "status|name|type" }
+        // Template exercises fallback if needed
+        val templateExercises = if (session.splitId != null) {
+            splitExerciseRepository.findAllBySplitIdOrderByExerciseOrder(session.splitId!!)
+        } else emptyList()
+        val templateByExId = templateExercises.associateBy { it.exerciseId }
+        val templateByName = templateExercises.associateBy { it.exerciseName.trim().lowercase() }
+
+        // 3. exerciseStates = request.exercises.associate { exerciseId to "status|name|type|targetDurationMinutes" }
         session.exerciseStates = request.exercises.associate { exercise ->
             val status = exercise.exerciseStatus?.takeIf { it.isNotBlank() } ?: "IN_PROGRESS"
             val name = exercise.exerciseNameSnapshot?.takeIf { it.isNotBlank() } ?: exercise.exerciseId
             val type = exercise.exerciseType ?: "STRENGTH"
-            exercise.exerciseId to listOf(status, name, type).joinToString(stateSeparator)
+            val targetMinutes = exercise.targetDurationMinutes?.toString()
+                ?: (if (type == "CARDIO") {
+                    templateByExId[exercise.exerciseId]?.targetDurationMinutes?.toString()
+                        ?: templateByName[name.trim().lowercase()]?.targetDurationMinutes?.toString()
+                        ?: "10"
+                } else "")
+            exercise.exerciseId to listOf(status, name, type, targetMinutes).joinToString(stateSeparator)
         }
 
         // 4. workoutSessionRepository.save(session)
@@ -221,19 +240,30 @@ class WorkoutSessionService(
                 startedAt = session.startedAt,
                 finishedAt = session.finishedAt,
                 notes = session.notes,
+                calories = session.calories,
                 exercises = syncExercises
             )
         }
 
         val allExerciseIds = (session.exerciseStates.keys + setsByExerciseId.keys).distinct()
+        val templateExercises = if (session.splitId != null) {
+            splitExerciseRepository.findAllBySplitIdOrderByExerciseOrder(session.splitId!!)
+        } else emptyList()
+        val templateByExId = templateExercises.associateBy { it.exerciseId }
+        val templateByName = templateExercises.associateBy { it.exerciseName.trim().lowercase() }
+
         val syncExercises = allExerciseIds.map { exId ->
             val exerciseSets = setsByExerciseId[exId].orEmpty()
             val firstSet = exerciseSets.firstOrNull()
 
-            val parts = (session.exerciseStates[exId] ?: "IN_PROGRESS").split(stateSeparator, limit = 3)
+            val parts = (session.exerciseStates[exId] ?: "IN_PROGRESS").split(stateSeparator, limit = 4)
             val exerciseStatus = parts.getOrNull(0)?.takeIf { it.isNotBlank() } ?: "IN_PROGRESS"
             val nameFromState = parts.getOrNull(1)?.takeIf { it.isNotBlank() }
             val typeFromState = parts.getOrNull(2)?.takeIf { it.isNotBlank() }
+            val targetMinutesFromState = parts.getOrNull(3)?.toIntOrNull()
+                ?: templateByExId[exId]?.targetDurationMinutes
+                ?: templateByName[nameFromState?.trim()?.lowercase()]?.targetDurationMinutes
+                ?: if (typeFromState == "CARDIO" || exerciseSets.any { it.durationMinutes != null }) 10 else null
 
             val exerciseNameSnapshot = firstSet?.exerciseNameSnapshot ?: nameFromState ?: exId
             val exerciseType = typeFromState
@@ -245,6 +275,7 @@ class WorkoutSessionService(
                 exerciseNameSnapshot = exerciseNameSnapshot,
                 exerciseType = exerciseType,
                 exerciseStatus = exerciseStatus,
+                targetDurationMinutes = targetMinutesFromState,
                 sets = exerciseSets.map { s ->
                     SyncSetDto(
                         setId = s.id,
@@ -259,6 +290,7 @@ class WorkoutSessionService(
             )
         }
 
+        logger.info("🔥 [BACKEND CALORIES FETCHED] Session ID={} -> Returning calories: {} kcal", session.id, session.calories)
         return WorkoutSyncDto(
             sessionId = session.id!!,
             splitId = session.splitId?.toString(),
@@ -267,5 +299,6 @@ class WorkoutSessionService(
             startedAt = session.startedAt,
             finishedAt = session.finishedAt,
             notes = session.notes,
+            calories = session.calories,
             exercises = syncExercises
         )}}

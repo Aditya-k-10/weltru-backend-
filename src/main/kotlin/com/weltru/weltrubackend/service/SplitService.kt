@@ -28,9 +28,12 @@ class SplitService(
             throw IllegalArgumentException("A split named '$trimmedName' already exists")
         }
 
+        val now = java.time.OffsetDateTime.now()
         val split = SplitEntity(
             userId = request.userId,
-            name = trimmedName
+            name = trimmedName,
+            createdAt = now,
+            updatedAt = now
         )
 
         return splitRepository.save(split)

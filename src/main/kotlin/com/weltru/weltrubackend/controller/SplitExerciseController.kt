@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.UUID
 
 @RestController
+@CrossOrigin(origins = ["*"])
 @RequestMapping("/api/splits/{splitId}/exercises")
 class SplitExerciseController(
     private val splitExerciseService: SplitExerciseService

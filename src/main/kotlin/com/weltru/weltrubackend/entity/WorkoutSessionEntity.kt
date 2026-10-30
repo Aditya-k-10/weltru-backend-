@@ -34,6 +34,9 @@ class WorkoutSessionEntity(
     @Column(name = "notes")
     var notes: String? = null,
 
+    @Column(name = "calories", precision = 7, scale = 2)
+    var calories: java.math.BigDecimal? = null,
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "exercise_states", nullable = false)
     var exerciseStates: Map<String, String> = emptyMap()

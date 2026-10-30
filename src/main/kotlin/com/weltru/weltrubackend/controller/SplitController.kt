@@ -19,7 +19,10 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
+import org.springframework.web.bind.annotation.CrossOrigin
+
 @RestController
+@CrossOrigin(origins = ["*"])
 @RequestMapping("/api/splits")
 class SplitController(
     private val splitService: SplitService

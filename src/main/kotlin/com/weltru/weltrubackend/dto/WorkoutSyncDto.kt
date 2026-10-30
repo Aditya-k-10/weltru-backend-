@@ -12,6 +12,7 @@ data class WorkoutSyncDto(
     val startedAt: OffsetDateTime? = null,
     val finishedAt: OffsetDateTime? = null,
     val notes: String? = null,
+    val calories: BigDecimal? = null,
     val exercises: List<SyncExerciseDto> = emptyList()
 )
 

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.UUID
 
 @RestController
+@CrossOrigin(origins = ["*"])
 @RequestMapping("/api/workout-sessions")
 class WorkoutSessionController(
     private val workoutSessionService: WorkoutSessionService

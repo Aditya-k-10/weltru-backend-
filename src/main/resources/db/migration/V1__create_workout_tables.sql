@@ -86,6 +86,8 @@ CREATE TABLE workout_sessions (
                                   status VARCHAR(20) NOT NULL DEFAULT 'IN_PROGRESS',
                                   notes TEXT,
 
+                                  calories NUMERIC(7, 2),
+
                                   exercise_states JSONB NOT NULL DEFAULT '{}'::jsonb,
 
                                   CONSTRAINT chk_workout_status
@@ -172,3 +174,23 @@ CREATE INDEX idx_sessions_user_started
 
 CREATE INDEX idx_session_sets_session
     ON session_sets(session_id);
+
+
+-- 6. User Profiles
+CREATE TABLE user_profiles (
+                               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                               user_id UUID NOT NULL UNIQUE,
+                               name VARCHAR(150),
+                               email VARCHAR(255),
+                               body_weight_kg NUMERIC(7, 2),
+                               height_cm NUMERIC(7, 2),
+                               age_years INTEGER,
+                               sex VARCHAR(20),
+                               active_calorie_goal INTEGER,
+                               created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                               updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_profiles_user_id
+    ON user_profiles(user_id);
+
